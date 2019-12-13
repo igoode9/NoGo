@@ -60,10 +60,10 @@ class MainPage extends StatelessWidget {
                 ),
                 new FlatButton(
                   onPressed: () {
-                    if (email != '') {
-                      //Email and password combo is successful.
-                      navigateToSubPage(context);
-                    }
+                    //if (email != '') {
+                    //Email and password combo is successful.
+                    navigateToSubPage(context);
+                    //}
                   },
                   child: Text('Login'),
                   color: Colors.red[900],
@@ -83,18 +83,29 @@ class SubPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: Text('NoGo'),
-          backgroundColor: Colors.red[900],
-        ),
-        body: RaisedButton(
-          textColor: Colors.white,
-          color: Colors.red[900],
-          child: Text('Log out'),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ));
+      appBar: AppBar(
+        title: Text('NoGo'),
+        backgroundColor: Colors.red[900],
+      ),
+      body: Stack(
+        children: <Widget>[
+          Container(
+              child: RaisedButton(
+                textColor: Colors.white,
+                color: Colors.red[900],
+                padding: EdgeInsets.fromLTRB(10, 10, 10, 10),
+                child: Text('Log out'),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+              padding: EdgeInsets.fromLTRB(330, 550, 10, 10),
+              color: Colors.white),
+          Image(
+            image: AssetImage('images/map.png'),
+          ),
+        ],
+      ),
+    );
   }
 }
-
