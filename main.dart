@@ -6,6 +6,7 @@ Future navigateToSubPage(context) async {
 
 String email = '';
 String password = '';
+String search = 'Mary Jane';
 
 void main() => runApp(App());
 
@@ -104,8 +105,71 @@ class SubPage extends StatelessWidget {
           Image(
             image: AssetImage('images/map.png'),
           ),
+          Container(
+            child: RaisedButton(
+              textColor: Colors.white,
+              color: Colors.red[900],
+              padding: EdgeInsets.fromLTRB(10, 10, 10, 10),
+              child: Text('Work Mode'),
+              onPressed: () {
+                //Enter work mode... hides you from being seen by other users.
+              },
+            ),
+            padding: EdgeInsets.fromLTRB(30, 350, 100, 20),
+          ),
+          Container(
+            child: RaisedButton(
+              textColor: Colors.white,
+              color: Colors.red[900],
+              padding: EdgeInsets.fromLTRB(10, 10, 10, 10),
+              child: Text('Play Mode'),
+              onPressed: () {
+                //Enter play mode... allows you to be seen by other users
+              },
+            ),
+            padding: EdgeInsets.fromLTRB(140, 350, 100, 20),
+          ),
+          Container(
+            child: new TextField(
+              decoration: new InputDecoration(hintText: "search new friends"),
+              onChanged: (String input) {
+                search = input;
+              },
+            ),
+            padding: EdgeInsets.fromLTRB(260, 350, 10, 20),
+          ),
+          Container(
+            child: new Text(search), //Adds to the list of friends
+            padding: EdgeInsets.fromLTRB(30, 430, 0, 0),
+          ),
+          Container(
+            child: new Text(
+              'My Friends:',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 20,
+              ),
+            ),
+            padding: EdgeInsets.fromLTRB(30, 400, 0, 0),
+          ),
+          Container(
+            child: new RaisedButton(
+              padding: EdgeInsets.fromLTRB(10, 15, 10, 15),
+              child: Text(
+                'A friend is nearby! Click to see them on the map',
+                style: TextStyle(
+                  color: Colors.red[900],
+                ),
+              ),
+              onPressed: () {
+                //Show friend on map.
+              },
+            ),
+            padding: EdgeInsets.fromLTRB(5, 550, 0, 0),
+          ),
         ],
       ),
     );
   }
 }
+
