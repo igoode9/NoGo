@@ -28,7 +28,7 @@ class UserPassword{
 
 // list for class 
 
-final List<UserPassword> specificToUser = [
+final List<UserPassword> userPass = [
 UserPassword(
     name: 'james smith',
     password: 'password',
