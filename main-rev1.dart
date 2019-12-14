@@ -1,13 +1,17 @@
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter/material.dart'; 
-import 'user_data-rev.dart'; 
+import 'user_data-rev.dart'; // index into list, extract data
+import 'installed-rev.dart'; // index into list, extract data
 
-class MyHomePage extends StatefulWidget {
+
+// GoogleMaps API display page 
+// developed by Project Lead (Delaney) and Technical Lead (Will)
+class MapPage extends MapPage {
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _MapPageState createState() => _MapPageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MapPageState extends State<MapPage> {
   GoogleMapController _controller;
 
   List<Marker> allMarkers = [];
@@ -41,7 +45,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  _coffeeShopList(index) {
+  _specificToUser(index) { // list name from User-data-rev.dart
     return AnimatedBuilder(
       animation: _pageController,
       builder: (BuildContext context, Widget widget) {
@@ -83,7 +87,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     child: Container(
                         decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(10.0),
-                            color: Colors.white),
+                            color: Colors.white), // consistent with theme developed by interface lead 
                         child: Row(children: [
                           SizedBox(width: 5.0),
                           Column(
@@ -133,12 +137,12 @@ class _MyHomePageState extends State<MyHomePage> {
         body: Stack(
           children: <Widget>[
             Container(
-              height: MediaQuery.of(context).size.height - 50.0,
+              height: MediaQuery.of(context).size.height,
               width: MediaQuery.of(context).size.width,
               child: GoogleMap(
                 initialCameraPosition: CameraPosition(
-                    target: LatLng(42.349553, -71.117384), zoom: 12.0),
-                markers: Set.from(allMarkers),
+                    target: LatLng(42.349553, -71.117384), zoom: 12.0), // use geolocation to open to location user is 
+                markers: Set.from(allMarkers), // displays all preset markers at once 
                 onMapCreated: mapCreated,
               ),
             ),
@@ -151,13 +155,13 @@ class _MyHomePageState extends State<MyHomePage> {
                   controller: _pageController,
                   itemCount: specificToUser.length,
                   itemBuilder: (BuildContext context, int index) {
-                    return _coffeeShopList(index);
+                    return _specificToUser(index); // returning index information from list
                   },
                 ),
               ),
             )
           ],
-        ));
+        )); // exiting all widgets from class 
   }
 
   void mapCreated(controller) {
@@ -171,7 +175,7 @@ class _MyHomePageState extends State<MyHomePage> {
         target: specificToUser[_pageController.page.toInt()].coordinates,
         zoom: 14.0,
         bearing: 45.0,
-        tilt: 45.0)));
+        tilt: 45.0))); // ability to animate camera, move around map 
   }
 }
 
@@ -179,11 +183,13 @@ Future navigateToSubPage(context) async {
   Navigator.push(context, MaterialPageRoute(builder: (context) => SubPage()));
 }
 
+
+// login page 
+// developed by Interface Lead, Emma
+// assistance from Specification Lead (Stephanie) and Documentation Lead (Isabelle) 
 String email = '';
 String password = '';
 String search = 'Mary Jane';
-
-void main() => runApp(App());
 
 class App extends StatelessWidget {
   @override
