@@ -1,6 +1,0 @@
-user_name-password-44 Cummington Mall, Boston, MA 02215
-james_smith-password-275 Babcock St, Boston, MA 02215 
-mike_smith-password-8 St Marys St, Boston, MA 02215
-robert_smith-password-8 St Marys St, Boston, MA 02215
-maria_garcia-password-735 Commonwealth Avenue, Boston, MA 02215
-david_smith-password-4 Jersey St, Boston, MA 02215
