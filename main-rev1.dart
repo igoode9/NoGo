@@ -242,7 +242,7 @@ class MainPage extends StatelessWidget {
                 ),
                 new FlatButton(
                   onPressed: () {
-                    if(email != userPass.name || password != userPass.password)
+                    if(email != userPass[index].name || password != userPass[index].password)
                     {
                       return "Incorrect username or password";
                     }
