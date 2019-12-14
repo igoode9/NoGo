@@ -1,0 +1,882 @@
+void main() => runApp(MyApp());
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Ice Creams FTW',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        scaffoldBackgroundColor: Colors.white10,
+      ),
+      home: const HomePage(title: 'Ice Cream Stores in SF'),
+    );
+  }
+}
+
+class HomePage extends StatefulWidget {
+  const HomePage({Key key, @required this.title}) : super(key: key);
+
+  final String title;
+
+  @override
+  _HomePageState createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  Stream<QuerySnapshot> _iceCreamStores;
+  final Completer<GoogleMapController> _mapController = Completer();
+
+  @override
+  void initState() {
+    super.initState();
+    _iceCreamStores = Firestore.instance
+        .collection('ice_cream_stores')
+        .orderBy('name')
+        .snapshots();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _iceCreamStores,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          if (!snapshot.hasData) {
+            return Center(child: const Text('Loading...'));
+          }
+
+          return Stack(
+            children: <Widget>[
+              StoreMap(
+                documents: snapshot.data.documents,
+                initialPosition: const LatLng(37.7786, -122.4375),
+                mapController: _mapController,
+              ),
+              StoreCarousel(
+                documents: snapshot.data.documents,
+                mapController: _mapController,
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class StoreCarousel extends StatelessWidget {
+  const StoreCarousel({
+    Key key,
+    @required this.documents,
+    @required this.mapController,
+  }) : super(key: key);
+
+  final List<DocumentSnapshot> documents;
+  final Completer<GoogleMapController> mapController;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: SizedBox(
+          height: 90,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: documents.length,
+            itemBuilder: (builder, index) {
+              return SizedBox(
+                width: 340,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Card(
+                    child: Center(
+                      child: StoreListTile(
+                        document: documents[index],
+                        mapController: mapController,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class StoreListTile extends StatefulWidget {
+  const StoreListTile({
+    Key key,
+    @required this.document,
+    @required this.mapController,
+  }) : super(key: key);
+
+  final DocumentSnapshot document;
+  final Completer<GoogleMapController> mapController;
+
+  @override
+  State<StatefulWidget> createState() {
+    return _StoreListTileState();
+  }
+}
+
+final _placesApiClient = GoogleMapsPlaces(apiKey: googleMapsApiKey);
+
+class _StoreListTileState extends State<StoreListTile> {
+  String _placePhotoUrl = '';
+  bool _disposed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _retrievePlacesDetails();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  Future<void> _retrievePlacesDetails() async {
+    final details =
+        await _placesApiClient.getDetailsByPlaceId(widget.document['placeId']);
+    if (!_disposed) {
+      setState(() {
+        if (details.result != null) {
+          _placePhotoUrl = _placesApiClient.buildPhotoUrl(
+            photoReference: details.result.photos[0].photoReference,
+            maxHeight: 300,
+          );
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(widget.document['name']),
+      subtitle: Text(widget.document['address']),
+      leading: Container(
+        child: _placePhotoUrl.isNotEmpty
+            // ? CircleAvatar(backgroundImage: NetworkImage(_placePhotoUrl))
+            ? ClipRRect(
+                child: Image.network(_placePhotoUrl, fit: BoxFit.cover),
+                borderRadius: const BorderRadius.all(Radius.circular(2)),
+              )
+            : CircleAvatar(
+                child: Icon(
+                  Icons.android,
+                  color: Colors.white,
+                ),
+                backgroundColor: Colors.pink,
+              ),
+        width: 100,
+        height: 60,
+      ),
+      onTap: () async {
+        final controller = await widget.mapController.future;
+        await controller.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: LatLng(
+                widget.document['location'].latitude,
+                widget.document['location'].longitude,
+              ),
+              zoom: 16,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+const _pinkHue = 350.0;
+
+class StoreMap extends StatelessWidget {
+  const StoreMap({
+    Key key,
+    @required this.documents,
+    @required this.initialPosition,
+    @required this.mapController,
+  }) : super(key: key);
+
+  final List<DocumentSnapshot> documents;
+  final LatLng initialPosition;
+  final Completer<GoogleMapController> mapController;
+
+  @override
+  Widget build(BuildContext context) {
+    return GoogleMap(
+      initialCameraPosition: CameraPosition(
+        target: initialPosition,
+        zoom: 12,
+      ),
+      markers: documents
+          .map((document) => Marker(
+                markerId: MarkerId(document['placeId']),
+                icon: BitmapDescriptor.defaultMarkerWithHue(_pinkHue),
+                position: LatLng(
+                  document['location'].latitude,
+                  document['location'].longitude,
+                ),
+                infoWindow: InfoWindow(
+                  title: document['name'],
+                  snippet: document['address'],
+                ),
+              ))
+          .toSet(),
+      onMapCreated: (mapController) {
+        this.mapController.complete(mapController);
+      },
+    );
+  }
+}
+
+
+Markers:
+https://www.youtube.com/watch?v=TdlCM3jiWb0
+
+
+void main() {
+  MapView.setApiKey(API_KEY);
+  runApp(new NoGo());
+}
+
+// features of geolocation portion of the application
+enum TabItem {
+  singleLocation,
+  singleFusedLocation,
+  locationStream,
+  distance,
+  geocode
+}
+
+// root widget of application is material application
+
+
+class Nogo extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    // builds MaterialApplication
+    return MaterialApp (
+      title: 'NoGo application',
+      theme: ThemeData(
+        primarySwatch: Colors.blueGrey,
+        scaffoldBackgroundColor: Colors.lightBlue,
+      ),
+      home: const MapPage(title: 'Welcome to NoGo'),
+    );
+  }
+}
+
+// map page established as a widget
+class MapPage extends StatefulWidget {
+  const MapPage({Key key, @required this.title}) : super(key: key);
+
+  final String title; // displays title fo application
+
+  @override
+  _MapPageState createState() => _MapPageState(); // create state
+}
+
+// class for _HomePageState
+// created by backend developers
+class _MapPageState extends State<MapPage> {
+  Stream<QuereySnapshot> _mapNetwork;
+  final Completer<GoogleMapController> _mapController = Completer();
+
+  @override
+  // creates inital states for user when opening to map section of application
+  void initState() {
+    super.initState();
+    _mapNetwork = Firestore.instance
+    .collection('user_data')
+    .orderBy('type')
+    .snapshots();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+      ),
+      body: StreamBuilder<QuerySnapshot>
+        stream: _mapNetwork,
+        builder: (context, snapshot) {
+        // error catching to make program robust
+          // improves user experience
+          // developed by Emma and Stephanie
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        if (!snapshot.hasData) {
+          // improves user experience
+          return Center(child: const Text('Loading...'));
+        }
+        return Stack(
+          children: <Widget>[
+            StoreMap(
+              // external files stores user data
+              documents: snapshot.data.documents,
+              // initial position of map is current location of the user
+              initialPosition: LatLng(40.688841, -74.044015),
+              mapController: _mapController,
+            ),
+            StoreCarousel(
+              documents: snapshot.data.documents,
+              mapController: _mapController,
+            ), // store carousel
+          ], // <widget>[]
+        ); // stack
+        },
+    ),
+  }
+}
+
+class StoreCarousel extends StatelessWidget {
+  const StoreCarousel({
+    Key key,
+    @required this.documents,
+    @required this.mapController,
+  }) : super(key: key);
+
+  final List<DocSnapshot> documents;
+  final Completer<GoogleMapController> mapController;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: SizedBox(
+          height: 90,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: documents.length,
+            itemBuilder: (builder, index) {
+              return SizedBox(
+                width: 340,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Card(
+                    child: Center(
+                      child: StoreListTile(
+                        document: documents[index],
+                        mapController: mapController,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class StoreListTile extends StatefulWidget {
+  const StoreListTile({
+    Key key,
+    @required this.document,
+    @required this.mapController,
+  }) : super(key: key);
+
+  final DocSnapshot document;
+  final Completer<GoogleMapController> mapController;
+
+  @override
+  State<StatefulWidget> createState() {
+    return _StoreListTileState();
+  }
+}
+
+final _placesApi = GoogleMapsPlaces(apiKey: googleMapsApiKey);
+
+class _StoreListTileState extends State<StoreListTile> {
+  String _placePhotoUrl = ''; // photographs of places, looks native and intuitive UI
+  bool _disposed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _retrievePlacesDetails(); // retrieved from google service
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  Future<void> _retrievePlacesDetails() async {
+    final details =
+    await _placesApi.getDetailsByPlaceId(widget.document['placeId']);
+    if (!_disposed) {
+      setState(() {
+        if (details.result != null) {
+          _placePhotoUrl = _placesApi.buildPhotoUrl(
+            photoReference: details.result.photos[0].photoReference,
+            maxHeight: 300,
+          );
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(widget.document['name']),
+      subtitle: Text(widget.document['address']),
+      leading: Container(
+        child: _placePhotoUrl.isNotEmpty
+            ? ClipRRect(
+          child: Image.network(_placePhotoUrl, fit: BoxFit.cover),
+          borderRadius: const BorderRadius.all(Radius.circular(2)),
+        )
+            : CircleAvatar(
+          child: Icon(
+            Icons.android,
+            color: Colors.white,
+          ),
+          backgroundColor: Colors.grey,
+        ),
+        width: 100,
+        height: 60,
+      ),
+      onTap: () async {
+        final controller = await widget.mapController.future;
+        await controller.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: LatLng(
+                widget.document['location'].latitude,
+                widget.document['location'].longitude,
+              ),
+              zoom: 15,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class UserMap extends StatelessWidget {
+  const UserMap({
+    Key key,
+    @required this.documents,
+    @required this.initialPosition,
+    @required this.mapController,
+  }) : super(key: key);
+
+  final List<DocSnapshot> documents; // user data information retrieved
+  final LatLng initialPosition;
+  final Completer<GoogleMapController> mapController;
+
+  @override
+  Widget build(BuildContext context) {
+    return GoogleMap(
+      initialCameraPosition: CameraPosition(
+        target: initialPosition,
+        zoom: 10,
+      ),
+      markers: documents
+          .map((document) => Marker(
+        markerId: MarkerId(document['placeId']),
+        icon: BitmapDescriptor.defaultMarkerWithHue(250.0),
+        position: LatLng(
+          // adding markers with label from document
+          document['location'].latitude,
+          document['location'].longitude,
+        ),
+        infoWindow: InfoWindow(
+          title: document['name'],
+          snippet: document['address'],
+        ),
+      ))
+          .toSet(),
+      onMapCreated: (mapController) {
+        this.mapController.complete(mapController);
+      },
+    );
+  }
+}
+
+
+// file stream imports
+import 'dart:async';
+
+// dart and dart feature imports
+import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:google_maps_webservice/places.dart';
+
+// alternate files developed imports
+import 'location_stream_widget.dart';
+import 'cuurent_location_widget.dart';
+import 'lookup_coordinates_widget.dart';
+import 'calculate_distance_widget.dart';
+
+const API_KEY = "<AIzaSyDYKS-JMrAJy2f2ggokElZGhY4wzRDhF-Y>";
+
+void main() => runApp(NoGo());
+
+class NoGo extends StatelessWidget {
+  // root widget
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: MapPage(),
+    ); // material app
+  }
+}
+  class MapPage extends StatefulWidget {
+    @override
+  _MapPageState createState() => _MapPageState();
+  }
+
+  class _MapPageState extends State<MapPage>
+  GoogleMapController _controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+    appBar: AppBar(
+    title: Text('NoGo map'),
+  centerTitle: true,
+    ), //appbar
+    body: Stack(
+    children: <Widget>[
+      Container(
+  height:MediaQuerey.of(context).size.height,
+  width:MediaQuerey.of(context).size.width,
+  child:GoogleMap(
+  initialCameraPosition: CameraPosition(
+  target: LatLng(42.3601, -71.0589), zoom: 10.0),
+  onMapCreated: mapCreated,
+  ), // camera position
+  ), // google map
+  ] // container
+  ));
+  }
+  void mapCreated(controller) {
+    setState(() {
+      _controller = controller;
+  });
+  }
+
+
+
+
+/*
+class NoGo extends StatefulWidget {
+  // root of application
+  @override
+  State<NoGo> createState() => BottomNavigationState();
+}
+
+// application opens to current location
+class BottomNavigationState extends State<NoGo> {
+  TabItem _currentItem = TabItem.singleLocation;
+  final List<TabItem> _bottomTabs = [
+    TabItem.singleLocation,
+    if (Platform.isAndroid) TabItem.singleFusedLocation,
+    TabItem.locationStream,
+    TabItem.distance,
+    TabItem.geocode,
+  ];
+
+  // navigation bar
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text('NoGo map system'),
+        ),
+        body: _buildBody(),
+        bottomNavigationBar: _buildBottomNavigationBar(),
+      ),
+    );
+  }
+
+  // installing features of the app from exterior files
+  // indexing into features defined as TabItems
+  Widget _buildBody() {
+    switch (_currentItem) {
+      case TabItem.locationStream:
+        return LocationStreamWidget();
+      case TabItem.distance:
+        return CalcDistanceWidget();
+      case TabItem.singleFusedLocation:
+        return CurrentLocationWidget(androidFusedLocation: true);
+      case TabItem.geocode:
+        return LookupCoordinatesWidget();
+      case TabItem.singleLocation:
+      default:
+        return CurrentLocationWidget(androidFusedLocation: false);
+    }
+  }
+
+  Widget _buildBottomNavigationBar() {
+    // creates navigation bar at bottom of screen
+    return BottomNavigationBar(
+      // return to screen
+      type: BottomNavigationBarType.fixed,
+      items: _bottomTabs
+          .map((tabItem) =>
+              _buildBottomNavigationBarItem(_icon(tabItem), tabItem))
+          .toList(), // listing of features
+      onTap: _onSelectTab,
+    );
+  }
+
+  // icon for bottom navigation bar
+  BottomNavigationBarItem _buildBottomNavigationBarItem(
+      IconData icon, TabItem tabItem) {
+    final String text = _title(tabItem);
+    final Color color = _currentItem == tabItem
+        ? Theme.of(context).primaryColor
+        : Colors.blueGrey;
+
+    // returning items from navigation
+    // features of text inputted from user
+    return BottomNavigationBarItem(
+      icon: Icon(
+        icon,
+        color: color, // predefined
+      ),
+      title: Text(
+        text,
+        style: TextStyle(
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  // function for selecting tabs
+  // determines output of program as defined by user
+  void _onSelectTab(int index) {
+    TabItem selectedTabItem = _bottomTabs[index];
+
+    setState(() {
+      _currentItem = selectedTabItem;
+    });
+  }
+
+  // displays titles of features of application
+  String _title(TabItem item) {
+    switch (item) {
+      case TabItem.singleLocation:
+        return 'Single';
+      case TabItem.singleFusedLocation:
+        return 'Fused Single'; // multiple at once
+      case TabItem.locationStream:
+        return 'Stream';
+      case TabItem.distance:
+        return 'Distance';
+      case TabItem.geocode:
+        return 'Geocode';
+      default:
+        throw 'Unknown: $item'; // if invalid, error checking to ensure application will not crash, is robust
+    }
+  }
+
+  IconData _icon(TabItem item) {
+    switch (item) {
+      case TabItem.singleLocation:
+        return Icons.location_on;
+      case TabItem.singleFusedLocation:
+        return Icons.location_on;
+      case TabItem.locationStream:
+        return Icons.clear_all;
+      case TabItem.distance:
+        return Icons.redo;
+      case TabItem.geocode:
+        return Icons.compare_arrows;
+      default:
+        throw 'Unknown: $item'; // error checking, improves user interaction with application
+    }
+  }
+}
+   */
+
+/*
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Geolocation Google Maps Demo',
+      home: MyMap(),
+    );
+  }
+}
+
+class MyMap extends StatefulWidget {
+  @override
+  State<MyMap> createState() => MyMapSampleState();
+}
+
+class MyMapSampleState extends State<MyMap> {
+  @override
+  Widget build(BuildContext context) {
+    return new Scaffold(
+      body: GoogleMap(
+        mapType: MapType.hybrid,
+        initialCameraPosition: CameraPosition(
+          target: LatLng(40.688841, -74.044015),
+          zoom: 11,
+        ),
+      ),
+    );
+  }
+}
+*/
+
+/*
+import 'package:flutter/material.dart';
+import 'home_map.dart';
+//import 'package:google_maps_flutter/google_maps_flutter.dart';
+
+
+void main() => runApp(new NoGo());
+
+class NoGo extends StatelessWidget(
+  // root of application
+  @override
+Widget build(BuildContext context) (
+  return MaterialApp(
+  debugShowCheckedModeBanner: false,
+title: ThemeData(
+primaryColor:Color(0xff6200ee),
+), // theme data
+home: HomePage(),
+); // MaterialApp
+)
+)
+
+// adding GoogleMap Widget
+
+
+
+
+class MyApp extends StatelessWidget(
+  @override
+Widget build(BuildContext context) {
+    return new MaterialApp(
+      home: new LoginPage(),
+      theme: new ThemeData(
+        primarySwatch: Colors.blueGrey
+      ) // ThemeData
+    ); // Material App
+  }
+)
+
+class LoginPage extends StatefulWidget{
+  @override
+  State createState() => new LoginPageState();
+}
+
+class LoginPageState extends State<LoginPage>{
+  AnimationController _iconAnimationController;
+  Animation<double> _iconAnimation;
+
+  @override
+  void initState(){
+    super.initState();
+    _iconAnimationController = new AnimationController(
+      vsync: this, duration: new Duration(milliseconds: 500)); //AnimationController
+    _iconAnimation = new CurvedAnimation(
+      parent: _iconAnimationController, curve: Curves.easeOut);
+    _iconAnimation.addListener(() => this.setState(() {}));
+  _iconAnimationController.forward();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return new Scaffold(
+      backgroundColor: Colors.blueGrey,
+      body: new Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          new Image(
+         // image: new NAME
+          // look for image/icon for login, add to asset as well
+          //fit: BoxFit.cover,
+         // color: Color.Grey12,
+          ), // image
+          new Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              new FlutterLogo(
+                size: _iconAnimation.value * 100,
+              ), // Flutter logo
+              new Form(
+                child: new Column(
+                  children: <Widget>[
+                    new TextFormField(
+                      decoration: new InputDecoration(
+                        hintText: "Enter Name",
+                    ), // input decoration
+                       keyboardType: TextInputType.text,
+              ), //TextFormField
+      new TextFormField(
+        decoration: new InputDecoration(
+          hintText: "Enter Password",
+        ), // InputDecoration
+        keyboardType: TextInputType.text,
+        obscureText: true,
+      ), //Text form field
+    ],//<Widget>[]
+    ), //Column
+    ),  //Form
+        ],  // <Widget> []
+      ), // Stack
+      // add additional features, change color, etc.
+    ); // Scaffold
+  }
+}
+
+
+ below is basis for initial page once logging in, still working on it
+void main() => runApp(
+      MaterialApp(
+        home: Scaffold(
+          // creating home area where user can determine which features
+          //they should interact with
+          // this assumes that they have already logged into the Application
+          backgroundColor: Colors.blueGrey,
+          body: Center(
+            child: Text('display application features here:'),
+          ),
+          appBar: AppBar(
+            title: Text('NoGo home'),
+            backgroundColor: Colors.blueGrey[900],
+          ), //AppBar, can change many things within this class
+        ), //Scaffold
+        debugShowCheckedModeBanner: false,
+      ), //MaterialApp
+    );
+
+
+*/
+
