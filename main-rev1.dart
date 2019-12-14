@@ -242,10 +242,14 @@ class MainPage extends StatelessWidget {
                 ),
                 new FlatButton(
                   onPressed: () {
-                    //if (email != '') {
-                    //Email and password combo is successful.
-                    navigateToSubPage(context);
-                    //}
+                    if(email != userPass.name || password != userPass.password)
+                    {
+                      return "Incorrect username or password";
+                    }
+                    else
+                    {
+                      navigateToSubPage(context);
+                    }
                   },
                   child: Text('Login'),
                   color: Colors.red[900],
