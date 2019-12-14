@@ -26,35 +26,45 @@ class MainPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       body: Container(
-        padding: EdgeInsets.fromLTRB(100, 100, 100, 40),
+        padding: EdgeInsets.fromLTRB(75, 75, 75, 75),
         margin: EdgeInsets.fromLTRB(
-          20,
-          100,
-          20,
+          30,
+          150,
+          30,
           100,
         ),
-        color: Colors.grey[200],
+        color: Colors.grey[300],
         child: Container(
-          padding: EdgeInsets.fromLTRB(0, 0, 20, 30),
+          padding: EdgeInsets.fromLTRB(0, 0, 20, 20),
           child: new Center(
             child: new Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
                 new Text(
-                  'NoGo',
+                  '   NoGo',
                   style: TextStyle(
                       fontSize: 50.0,
                       fontWeight: FontWeight.bold,
                       color: Colors.red[900]),
                 ),
                 new TextField(
-                  decoration: new InputDecoration(hintText: "name@example.com"),
+                  decoration: new InputDecoration(
+                    hintText: "username",
+                    icon: Icon(Icons.mail),
+                    border: OutlineInputBorder(),
+                  ),
+                  cursorColor: Colors.black,
+                  cursorWidth: 7,
                   onChanged: (String input) {
                     email = input;
                   },
                 ),
                 new TextField(
-                  decoration: new InputDecoration(hintText: "password"),
+                  decoration: new InputDecoration(
+                      hintText: "password",
+                      icon: Icon(Icons.lock),
+                      border: OutlineInputBorder(),
+                      fillColor: Colors.white),
                   onChanged: (String input) {
                     password = input;
                   },
@@ -66,7 +76,10 @@ class MainPage extends StatelessWidget {
                     navigateToSubPage(context);
                     //}
                   },
-                  child: Text('Login'),
+                  child: Text(
+                    'Login',
+                    style: TextStyle(color: Colors.white),
+                  ),
                   color: Colors.red[900],
                 ),
               ],
@@ -131,7 +144,8 @@ class SubPage extends StatelessWidget {
           ),
           Container(
             child: new TextField(
-              decoration: new InputDecoration(hintText: "search new friends"),
+              decoration: new InputDecoration(
+                  hintText: "Search", prefixIcon: Icon(Icons.search)),
               onChanged: (String input) {
                 search = input;
               },
@@ -139,8 +153,12 @@ class SubPage extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(260, 350, 10, 20),
           ),
           Container(
-            child: new Text(search), //Adds to the list of friends
-            padding: EdgeInsets.fromLTRB(30, 430, 0, 0),
+            child: new Text('''
+            Izzy Goode
+            Will Carson
+            Delaney Dow
+            '''), //Adds to the list of friends
+            padding: EdgeInsets.fromLTRB(250, 430, 0, 0),
           ),
           Container(
             child: new Text(
@@ -150,7 +168,40 @@ class SubPage extends StatelessWidget {
                 fontSize: 20,
               ),
             ),
+            padding: EdgeInsets.fromLTRB(275, 400, 0, 0),
+          ),
+          Container(
+            child: new Text('''
+            Professor Densmore
+            Ex-Boyfriend
+            '''), //Adds to the list of friends
+            padding: EdgeInsets.fromLTRB(0, 430, 0, 0),
+          ),
+          Container(
+            child: new Text(
+              'My Enemies:',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 20,
+              ),
+            ),
             padding: EdgeInsets.fromLTRB(30, 400, 0, 0),
+          ),
+          Container(
+            child: new Text('''
+            Nub Pob
+            '''), //Adds to the list of friends
+            padding: EdgeInsets.fromLTRB(0, 500, 0, 0),
+          ),
+          Container(
+            child: new Text(
+              'My Favorite Locations:',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 20,
+              ),
+            ),
+            padding: EdgeInsets.fromLTRB(30, 470, 0, 0),
           ),
           Container(
             child: new RaisedButton(
@@ -172,4 +223,5 @@ class SubPage extends StatelessWidget {
     );
   }
 }
+
 
